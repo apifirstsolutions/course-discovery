@@ -828,7 +828,7 @@ class ProgramsApiDataLoader(AbstractDataLoader):
         try:
             defaults = {
                 'uuid': uuid,
-                'title': body['name'],
+                'title': body['title'],
                 'subtitle': body['subtitle'],
                 'type': self.XSERIES,
                 'status': body['status'],
@@ -866,14 +866,14 @@ class ProgramsApiDataLoader(AbstractDataLoader):
 
     def _update_program_organizations(self, body, program):
         uuid = self._get_uuid(body)
-        org_keys = [org['key'] for org in body['organizations']]
-        organizations = Organization.objects.filter(key__in=org_keys, partner=self.partner)
+        #org_keys = [org['key'] for org in body['results']]
+        #organizations = Organization.objects.filter(key__in=org_keys, partner=self.partner)
 
-        if len(org_keys) != organizations.count():
-            logger.error('Organizations for program [%s] are invalid!', uuid)
+        #if len(org_keys) != organizations.count():
+            #logger.error('Organizations for program [%s] are invalid!', uuid)
 
-        program.authoring_organizations.clear()
-        program.authoring_organizations.add(*organizations)
+        #program.authoring_organizations.clear()
+        #program.authoring_organizations.add(*organizations)
 
     def _get_banner_image_url(self, body):
         image_key = 'w{width}h{height}'.format(width=self.image_width, height=self.image_height)
