@@ -37,6 +37,16 @@ from course_discovery.apps.course_metadata.utils import (
 )
 from course_discovery.apps.publisher.utils import is_publisher_user
 
+from django.http import JsonResponse
+
+from rest_framework.decorators import permission_classes, api_view
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.decorators import authentication_classes
+
+from edx_rest_framework_extensions.auth.jwt.authentication import JwtAuthentication
+import os
+import subprocess
 logger = logging.getLogger(__name__)
 
 
@@ -72,7 +82,6 @@ class CourseViewSet(CompressedCacheResponseMixin, viewsets.ModelViewSet):
     serializer_class = serializers.CourseWithProgramsSerializer
     metadata_class = MetadataWithType
     metadata_related_choices_whitelist = ('mode', 'level_type', 'subjects',)
-
     course_key_regex = re.compile(COURSE_ID_REGEX)
     course_uuid_regex = re.compile(COURSE_UUID_REGEX)
 
@@ -478,3 +487,49 @@ class CourseViewSet(CompressedCacheResponseMixin, viewsets.ModelViewSet):
             create_missing_entitlement(course)
 
         return super().retrieve(request, *args, **kwargs)
+
+
+@authentication_classes((JwtAuthentication,))
+@api_view(['GET'])
+@permission_classes((IsAuthenticated,))
+def refresh_course_metadata(request):
+    course_id = request.GET.get('course_id','')
+    org = course_id.split(':')[1].split('+')[0]
+    course_num = course_id.split(':')[1].split('+')[1]
+    term = course_id.split(':')[1].split('+')[2]
+    cmd = ['python','/edx/app/discovery/discovery/manage.py','refresh_course_metadata']
+    update_index_cmd = ['python','/edx/app/discovery/discovery/manage.py','update_index', '--disable-change-limit']
+    logs_dir  = '/edx/var/edxapp/data/' +org +'/' + course_num + '/' + term + '/' + 'refresh_metadata_logs'
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    o, e = proc.communicate()
+    command_output = o.decode('ascii')
+    command_error =  e.decode('ascii')
+    print('code: ' + str(proc.returncode))
+    if proc.returncode == 1:
+        if not os.path.exists(logs_dir):
+            os.mkdir(logs_dir)
+        log_file = open(logs_dir + "/file.log", "w")
+        log_file.write(command_output)
+        log_file.write(command_error)
+        log_file.close()
+        data = {'is_successful': False}
+        return JsonResponse(data)
+    else:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        o, e = proc.communicate()
+        command_output =  o.decode('ascii')
+        command_error = e.decode('ascii')
+        if proc.returncode == 1:
+            if not os.path.exists(logs_dir):
+                os.makedirs(logs_dir)
+            log_file = open(logs_dir + "/file.log", "w")
+            log_file.write(command_output)
+            log_file.write(command_error)
+            log_file.close()
+            data = {'is_successful': False}
+            return JsonResponse(data)
+        else:
+            data = {'is_successful': True}
+            return JsonResponse(data)
+
+
