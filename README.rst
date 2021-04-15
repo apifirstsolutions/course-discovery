@@ -1,4 +1,4 @@
-Grid Synergy ecommerce fork
+Grid Synergy course-discovery fork
 ==============================
 
 .. image:: https://img.shields.io/badge/hack.d-Lawrence%20McDaniel-orange.svg
